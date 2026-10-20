@@ -25,6 +25,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Turn off Linux desktop target (app is Android only)
+        shell: bash
+        run: flutter config --no-enable-linux-desktop
+
       - name: Accept Android licenses
         shell: bash
         run: |
