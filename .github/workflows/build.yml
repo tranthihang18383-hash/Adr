@@ -30,10 +30,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt flet-cli
 
+      - name: Show tool versions
+        run: |
+          python --version
+          flet --version || true
+          flutter --version || true
+          java -version 2>&1 || true
+
       - name: Build APK
         # flet asks "Proceed? [y/n]" when it wants Flutter. CI has no keyboard,
         # so answer "y" automatically.
-        run: echo y | flet build apk -v
+        shell: bash
+        run: |
+          set -o pipefail
+          echo y | flet build apk -v 2>&1 | tee build.log
 
       - uses: actions/upload-artifact@v4
         with:
@@ -41,3 +51,11 @@ jobs:
           path: build/apk/*.apk
           if-no-files-found: error
           compression-level: 0
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
