@@ -1,0 +1,19 @@
+[project]
+name = "tetomidi"
+version = "1.0.0"
+description = "Audio to MIDI transcriber"
+requires-python = ">=3.10"
+dependencies = [
+    "flet",
+    "mutagen",
+    "certifi",
+]
+
+[tool.flet]
+org = "com.tetomidi"
+product = "tetomidi"
+company = "tetomidi"
+copyright = "2026"
+
+[tool.flet.app]
+path = "."
