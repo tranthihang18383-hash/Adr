@@ -1,44 +1,43 @@
-name: Build APK
+name: build-apk
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
-  build:
+  apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 90
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Install dependencies
+      - name: Install Flet
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Accept Android licenses
-        run: |
-          yes | sdkmanager --licenses || true
+          pip install -r requirements.txt flet-cli
 
       - name: Build APK
+        # flet asks "Proceed? [y/n]" when it wants Flutter. CI has no keyboard,
+        # so answer "y" automatically.
         run: echo y | flet build apk -v
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: tetomidi-apk
           path: build/apk/*.apk
+          if-no-files-found: error
+          compression-level: 0
