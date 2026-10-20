@@ -52,8 +52,12 @@ jobs:
         # so answer "y" automatically.
         shell: bash
         run: |
-          set -o pipefail
-          echo y | flet build apk -v 2>&1 | tee build.log
+          # flet may ask several [y/n] questions. Answer "y" to all of them.
+          # yes keeps printing y until flet exits; ignore its SIGPIPE.
+          yes y | flet build apk -v 2>&1 | tee build.log
+          status=${PIPESTATUS[1]}
+          echo "flet exit code: $status"
+          exit $status
 
       - name: Show end of build log when the build fails
         if: failure()
