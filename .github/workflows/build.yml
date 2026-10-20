@@ -60,6 +60,25 @@ jobs:
           echo "flet exit code: $status"
           exit $status
 
+      - name: Collect every log file Flet wrote (on failure)
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p diag
+          find build "$HOME/.flet" -type f \( -name "*.log" -o -name "*.txt" -o -name "*.err" -o -name "*.out" \) 2>/dev/null \
+            -exec cp --parents {} diag/ \; || true
+          echo "Files collected:"
+          find diag -type f | head -100 || true
+          for f in $(find diag -type f | head -20); do echo "=== $f ==="; tail -n 80 "$f"; done || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: flet-diagnostics
+          path: diag
+          if-no-files-found: ignore
+          compression-level: 0
+
       - name: Show end of build log when the build fails
         if: failure()
         shell: bash
