@@ -7,6 +7,7 @@ from core.api_client import MultiBridge
 from mobile.consts import ENDPOINTS, GREY, GUIDE, TOKEN, WHITE
 from mobile.pick import make_pick
 from mobile.run import make_run
+from mobile.stats import make_stats
 from mobile.storage import make_saver
 from mobile.upload_box import make_upload_box
 
@@ -58,6 +59,8 @@ def main(page: ft.Page):
     cancel_btn = ft.TextButton(content="Cancel", visible=False)
     save_btn = ft.Button(content="Save MIDI", visible=False, width=220)
 
+    stats_box, show_stats, hide_stats = make_stats()
+
     def set_status(text, color=GREY):
         status.value = text
         status.color = color
@@ -65,7 +68,8 @@ def main(page: ft.Page):
     c = SimpleNamespace(
         page=page, st=st, api=api, picker=picker, save_midi=save_midi, log=log,
         set_status=set_status, file_lbl=file_lbl, link_field=link_field, bar=bar,
-        go_btn=go_btn, cancel_btn=cancel_btn, save_btn=save_btn)
+        go_btn=go_btn, cancel_btn=cancel_btn, save_btn=save_btn,
+        show_stats=show_stats, hide_stats=hide_stats)
 
     pick_click = make_pick(c)
     go_click, cancel_click, save_click, discord_click = make_run(c)
@@ -83,7 +87,7 @@ def main(page: ft.Page):
             ft.Image(src="icon.png", width=110, height=110, border_radius=24),
             ft.Text("tetomidi", size=26, weight=ft.FontWeight.BOLD, color=WHITE),
             pick_box, link_field, row(go_btn), row(cancel_btn), bar, status,
-            row(save_btn),
+            stats_box, row(save_btn),
             row(ft.TextButton(content="Guide", on_click=toggle_guide),
                 ft.TextButton(content="Log", on_click=toggle_log),
                 ft.TextButton(content="Discord", on_click=discord_click)),
