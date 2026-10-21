@@ -84,7 +84,8 @@ def main(page: ft.Page):
 
     page.add(ft.Column(
         [
-            ft.Text("tetomidi", size=28, weight=ft.FontWeight.BOLD, color=WHITE),
+            ft.Image(src="icon.png", width=110, height=110, border_radius=24),
+            ft.Text("tetomidi", size=26, weight=ft.FontWeight.BOLD, color=WHITE),
             pick_box, link_field, row(go_btn), row(cancel_btn), bar, status,
             row(save_btn),
             row(ft.TextButton(content="Guide", on_click=toggle_guide),
