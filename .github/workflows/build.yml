@@ -87,6 +87,16 @@ jobs:
           echo "Files collected:"
           find diag -type f | head -100 || true
 
+      # The real cause of a failed build is far above the last lines of the
+      # log. This step prints only the lines that explain the failure, so
+      # it can be read (or screenshotted) in one place.
+      - name: Show the real error (on failure)
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== Gradle / Flutter error blocks ==="
+          grep -n -i -B2 -A12 -E "What went wrong|FAILURE: Build failed|Execution failed for task|Could not (resolve|find|determine)|Exception in thread|Traceback|Error: |error: |ERROR:" build.log | head -n 120 || true
+
       - name: Show end of build log when the build fails
         if: failure()
         shell: bash
