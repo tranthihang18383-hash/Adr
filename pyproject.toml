@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Audio to MIDI transcriber"
 requires-python = ">=3.10"
 dependencies = [
-    "flet",
+    "flet==1.0.4",
     "mutagen",
     "certifi",
 ]
