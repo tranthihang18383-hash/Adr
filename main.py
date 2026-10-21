@@ -1,6 +1,7 @@
 """Android (and desktop preview) entry point for tetomidi. Build with: flet build apk"""
-from mobile.app import main
 import flet as ft
 
+from mobile.app import main
+
 if __name__ == "__main__":
-    ft.app(target=main, upload_dir="uploads")
+    ft.run(main, assets_dir="assets")
