@@ -127,15 +127,16 @@ class BridgeClient:
             h["Authorization"] = f"Bearer {self.token}"
         return h
 
-    def _request(self, method, url, body=None, headers=None):
+    # ---------- low level ----------
+    def _auth(self):
+        return {"Authorization": f"Bearer {self.token}"} if self.token else {}
+
+    def _request(self, method, url, body=None, headers=None, timeout=None):
         req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout, context=_SSL) as r:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout, context=_SSL) as r:
                 return r.headers.get("Content-Type", ""), r.headers.get("Content-Disposition", ""), r.read()
         except urllib.error.HTTPError as e:
             detail = e.read()[:300].decode("utf-8", "replace")
             raise ApiError(f"HTTP {e.code}: {detail}")
-        except urllib.error.URLError as e:
-            raise ApiError(f"Cannot reach server: {e.reason}")
-        except OSError as e:
-            raise ApiError(f"Conn
+    
