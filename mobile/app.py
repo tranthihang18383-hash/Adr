@@ -8,6 +8,7 @@ from mobile.consts import ENDPOINTS, GREY, GUIDE, TOKEN, WHITE
 from mobile.pick import make_pick
 from mobile.run import make_run
 from mobile.storage import make_saver
+from mobile.upload_box import make_upload_box
 
 
 def main(page: ft.Page):
@@ -46,7 +47,7 @@ def main(page: ft.Page):
         guide_box.visible = not guide_box.visible
         page.update()
 
-    file_lbl = ft.Text("No file selected", color=GREY, size=12,
+    file_lbl = ft.Text("", color=GREY, size=12,
                        text_align=ft.TextAlign.CENTER)
     status = ft.Text("", color=GREY, size=12, text_align=ft.TextAlign.CENTER)
     bar = ft.ProgressBar(value=0, visible=False, color=WHITE, bgcolor="#151515")
@@ -72,12 +73,7 @@ def main(page: ft.Page):
     cancel_btn.on_click = cancel_click
     save_btn.on_click = save_click
 
-    pick_box = ft.Container(
-        content=ft.Column(
-            [ft.Text("Tap to choose audio or video", color=WHITE, size=14), file_lbl],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6),
-        alignment=ft.Alignment(0, 0), height=130, border_radius=16,
-        bgcolor="#0d0d0d", on_click=pick_click)
+    pick_box = make_upload_box(file_lbl, pick_click)
 
     def row(*items):
         return ft.Row(list(items), alignment=ft.MainAxisAlignment.CENTER)
