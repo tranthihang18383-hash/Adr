@@ -3,6 +3,8 @@ import asyncio
 import os
 import time
 
+import flet as ft
+
 from core.naming import midi_name, name_from_url
 from mobile.consts import DISCORD_URL, GREEN, GREY, RED
 
@@ -76,9 +78,20 @@ def make_run(c):
             await asyncio.to_thread(c.api.cancel, c.st["jid"])
 
     async def discord_click(e=None):
+        # Open the Discord invite in the phone's browser / Discord app.
+        # Try the explicit "external application" mode first, then fall back
+        # to the default launcher so one of them always works.
+        try:
+            await ft.UrlLauncher().launch_url(
+                DISCORD_URL, mode=ft.LaunchMode.EXTERNAL_APPLICATION)
+            return
+        except Exception as ex:
+            c.log(f"UrlLauncher failed: {ex}")
         try:
             await c.page.launch_url(DISCORD_URL)
         except Exception as ex:
             c.log(f"Could not open link: {ex}")
+            c.set_status(f"Could not open Discord: {DISCORD_URL}", RED)
+            c.page.update()
 
     return go_click, cancel_click, save_click, discord_click
