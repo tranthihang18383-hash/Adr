@@ -139,4 +139,5 @@ class BridgeClient:
         except urllib.error.HTTPError as e:
             detail = e.read()[:300].decode("utf-8", "replace")
             raise ApiError(f"HTTP {e.code}: {detail}")
-    
+
+   
