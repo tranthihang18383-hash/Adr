@@ -2,12 +2,21 @@
 import flet as ft
 
 
-def make_saver(page, on_done):
-    """Create a FilePicker used to save MIDI. Call saver.save_file(...) to open the dialog."""
-    def handle(e: ft.FilePickerResultEvent):
-        on_done(e.path)
+def make_saver(page):
+    """Register a FilePicker service and return an async save(file_name, data) function.
 
-    saver = ft.FilePicker(on_result=handle)
-    page.overlay.append(saver)
-    page.update()
-    return saver
+    save() opens the system 'Save as' dialog and writes `data` (bytes).
+    It returns the saved path (or None when the user cancels).
+    On Android the bytes MUST be passed to save_file (src_bytes), Flet writes them for us.
+    """
+    saver = ft.FilePicker()
+    page.services.append(saver)
+
+    async def save(file_name, data):
+        return await saver.save_file(
+            dialog_title="Save MIDI",
+            file_name=file_name,
+            src_bytes=data,
+        )
+
+    return save
