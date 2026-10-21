@@ -1,14 +1,15 @@
-import io
-import threading
-import time
+import asyncio
 import datetime
+import io
 import math
+import os
+import time
 
 import flet as ft
 from mutagen import File as AudioFile
 
 from core.api_client import MultiBridge
-from core.naming import name_from_url, safe_filename
+from core.naming import midi_name, name_from_url, safe_filename
 from mobile.storage import make_saver
 
 # Same endpoints as the Windows app: 3000 first, 8080 as backup
@@ -28,9 +29,14 @@ GUIDE = (
     "2. Or paste a SoundCloud link.\n\n"
     "3. Tap Transcribe.\n\n"
     "4. When it says Transcriber done!, choose where to save the MIDI "
-    "(for example Downloads).\n\n"
+    "(for example Downloads). If the save window does not open, tap Save MIDI.\n\n"
     "Only use audio you have the right to convert."
 )
+
+GREY = "#8a8a8a"
+WHITE = "#ffffff"
+RED = "#ff6b6b"
+GREEN = "#6bff95"
 
 
 def _length_from_bytes(data):
@@ -39,6 +45,11 @@ def _length_from_bytes(data):
         return f.info.length if f is not None and f.info is not None else None
     except Exception:
         return None
+
+
+def _fmt_time(seconds):
+    seconds = int(seconds)
+    return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
 def main(page: ft.Page):
@@ -50,8 +61,13 @@ def main(page: ft.Page):
 
     api = MultiBridge(ENDPOINTS, TOKEN)
     api.start_keepalive(minutes=10)
-    st = {"name": None, "data": None, "link": None, "jid": None, "t0": None,
-          "pct": 0, "midi_name": None, "running": False}
+    st = {"name": None, "data": None, "link": None, "jid": None, "length": None,
+          "midi": None, "midi_name": None, "running": False}
+
+    # Services (Flet 1.0: FilePicker is a service, added to page.services)
+    picker = ft.FilePicker()
+    page.services.append(picker)
+    save_midi = make_saver(page)
 
     # ---------- log ----------
     log_list = ft.ListView(spacing=2, height=160, auto_scroll=True)
@@ -60,70 +76,66 @@ def main(page: ft.Page):
 
     def log(msg):
         stamp = datetime.datetime.now().strftime("%H:%M:%S")
-        log_list.controls.append(ft.Text(f"[{stamp}] {msg}", size=11, color="#8a8a8a"))
+        log_list.controls.append(ft.Text(f"[{stamp}] {msg}", size=11, color=GREY))
         page.update()
 
-    def toggle_log(e):
+    def toggle_log(e=None):
         log_box.visible = not log_box.visible
         page.update()
 
+    guide_box = ft.Container(content=ft.Text(GUIDE, size=13, color="#cfcfcf"), visible=False,
+                             bgcolor="#0d0d0d", padding=14, border_radius=12)
+
+    def toggle_guide(e=None):
+        guide_box.visible = not guide_box.visible
+        page.update()
+
     # ---------- widgets ----------
-    file_lbl = ft.Text("No file selected", color="#8a8a8a", size=12)
-    status = ft.Text("", color="#8a8a8a", size=12)
-    hint = ft.Text("", color="#8a8a8a", size=10)
-    bar = ft.ProgressBar(value=0, visible=False, color="#ffffff", bgcolor="#151515")
+    file_lbl = ft.Text("No file selected", color=GREY, size=12, text_align=ft.TextAlign.CENTER)
+    status = ft.Text("", color=GREY, size=12, text_align=ft.TextAlign.CENTER)
+    hint = ft.Text("", color=GREY, size=10, text_align=ft.TextAlign.CENTER)
+    bar = ft.ProgressBar(value=0, visible=False, color=WHITE, bgcolor="#151515")
     link_field = ft.TextField(hint_text="Paste a SoundCloud or other link", border_radius=24,
-                              bgcolor="#151515", border_color="#2a2a2a", color="#ffffff")
-    go_btn = ft.ElevatedButton("Transcribe", on_click=lambda e: start(), height=52, expand=True)
-    cancel_btn = ft.IconButton(icon=ft.icons.CLOSE, on_click=lambda e: cancel(),
-                               visible=False, icon_color="#ffffff")
-    back_btn = ft.OutlinedButton("Back", on_click=lambda e: reset(), visible=False, expand=True)
+                              bgcolor="#151515", border_color="#2a2a2a", color=WHITE)
 
-    def on_pick(e: ft.FilePickerResultEvent):
-        if not e.files:
-            return
-        f = e.files[0]
-        if f.path:  # a real file path (desktop preview)
-            with open(f.path, "rb") as fh:
-                data = fh.read()
-            accept(f.name, data)
-        else:  # Android: upload the file to Flet first, then read it
-            url = page.get_upload_url(f.name, 600)
-            picker.upload([ft.FilePickerUploadFile(f.name, upload_url=url)])
-            st["pending"] = f.name
+    def set_status(text, color=GREY):
+        status.value = text
+        status.color = color
 
-    def on_upload(e: ft.FilePickerUploadEvent):
-        if e.progress == 1 and st.get("pending"):
-            import os
-            path = os.path.join("uploads", st.pop("pending"))
-            with open(path, "rb") as fh:
-                data = fh.read()
-            accept(os.path.basename(path), data)
-
+    # ---------- file picking ----------
     def accept(name, data):
         length = _length_from_bytes(data)
         if length is not None and length > MAX_SECONDS:
             file_lbl.value = "This file is longer than 40 minutes."
-            file_lbl.color = "#ff6b6b"
-            st["name"] = st["data"] = None
+            file_lbl.color = RED
+            st["name"] = st["data"] = st["length"] = None
         else:
             st["name"], st["data"], st["link"] = safe_filename(name), data, None
+            st["length"] = length
             link_field.value = ""
             file_lbl.value = st["name"]
-            file_lbl.color = "#ffffff"
+            file_lbl.color = WHITE
+            set_status("")
             log(f"File chosen: {st['name']}")
         page.update()
 
-    picker = ft.FilePicker(on_result=on_pick, on_upload=on_upload)
-    page.overlay.append(picker)
-
-    def pick_click(e):
-        picker.pick_files(allow_multiple=False, allowed_extensions=AUDIO_EXT)
-
-    # Save: system dialog, the user chooses Downloads
-    def on_saved(path):
-        if path:
-            status.value = f"Saved: {st['midi_name']}"
-            log(f"Saved MIDI to {path}")
-        else:
-            status.value = "Save canc
+    async def pick_click(e=None):
+        if st["running"]:
+            return
+        try:
+            files = await picker.pick_files(
+                allow_multiple=False,
+                with_data=True,
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=AUDIO_EXT,
+            )
+        except Exception as ex:
+            log(f"File picker error: {ex}")
+            set_status("Could not open the file picker.", RED)
+            page.update()
+            return
+        if not files:
+            return
+        f = files[0]
+        data = f.bytes
+        if not data and f.path:  # des
